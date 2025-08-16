@@ -26,10 +26,15 @@ O desafio é determinar a rota mais eficiente (em termos de distância e custo d
 Recomenda-se a seguinte estrutura de arquivos:
 
 /projeto_coleta_lixo/
+
 |-- resolveRota.py            # Script principal
+
 |-- config.json               # Arquivo de configuração com os parâmetros
+
 |-- requirements.txt          # Lista de dependências Python
+
 |-- roteiro_final.txt         # Arquivo de saída com o resultado (gerado pelo script)
+
 |-- mapa_referencia.html      # Mapa interativo de saída (gerado pelo script)
 
 
