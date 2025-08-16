@@ -3,5 +3,3 @@ networkx
 pulp
 geopandas
 shapely
-json
-collections-extended
