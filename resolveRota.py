@@ -5,7 +5,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 from collections import Counter
 
-# --- PASSO 1: CRIAÇÃO E LIMPEZA DO GRAFO ---
+# CRIAÇÃO E LIMPEZA DO GRAFO
 print("--- Iniciando Passo 1: Criação e Limpeza do Grafo ---")
 
 polygon_coords = [
@@ -34,13 +34,13 @@ G_solver = nx.Graph(G_solver)
 print(f"Grafo simplificado para o solver com {G_solver.number_of_nodes()} nós e {len(G_solver.edges())} ruas.")
 print("-" * 30)
 
-# --- PASSO 2: DEFINIÇÃO DOS NÓS DE INÍCIO E FIM ---
+# DEFINIÇÃO DOS NÓS DE INÍCIO E FIM
 no_inicio = 3503367399
 no_fim = 3379729736
 print(f"Nó de início definido: {no_inicio}")
 print(f"Nó de fim definido: {no_fim}")
 
-# --- PASSO 2.5: GERAR NOMES DESCRITIVOS PARA OS CRUZAMENTOS ---
+# GERAR NOMES DESCRITIVOS PARA OS CRUZAMENTOS
 print("\n--- Iniciando Passo 2.5: Gerando nomes para os cruzamentos ---")
 nomes_cruzamentos = {}
 for node in G_raw.nodes():
@@ -65,7 +65,7 @@ for node in G_raw.nodes():
 print("Nomes descritivos para os cruzamentos foram gerados.")
 print("-" * 30)
 
-# --- PASSO 3: DEFINIÇÃO DOS PARÂMETROS DO MODELO ---
+# DEFINIÇÃO DOS PARÂMETROS DO MODELO
 print("\n--- Iniciando Passo 3: Definição dos Parâmetros ---")
 C_LITRO = 5.80; KM_LITRO = 5.0; C_KM = C_LITRO / KM_LITRO
 V = list(G_solver.nodes()); E = list(G_solver.edges()); A = []
@@ -79,7 +79,7 @@ for i, j in E:
 print(f"Parâmetros definidos. Custo por km: R${C_KM:.2f}")
 print("-" * 30)
 
-# --- PASSO 4: MODELAGEM E RESOLUÇÃO COM PULP ---
+# MODELAGEM E RESOLUÇÃO COM PULP
 print("\n--- Iniciando Passo 4: Otimização com PuLP ---")
 model = pulp.LpProblem("Otimizacao_Rota_Coleta", pulp.LpMinimize)
 
@@ -94,7 +94,7 @@ x = pulp.LpVariable.dicts("x", A, lowBound=0, cat="Integer")
 # Equação: Minimizar Z = Soma(c_ij * x_ij)
 model += pulp.lpSum([costs[i, j] * x[i, j] for (i, j) in A]), "Custo_Total"
 
-# --- Adicionando as Restrições ao Modelo ---
+# Adicionando as Restrições ao Modelo ---
 
 # RESTRIÇÃO 1: COBERTURA DE TODAS AS RUAS
 # Garante que cada rua (aresta em E) seja percorrida pelo menos uma vez, em qualquer sentido.
@@ -144,7 +144,7 @@ if status == "Optimal":
     for i, j in A:
         if x[i, j].varValue > 0: solucao_x[(i, j)] = int(x[i, j].varValue)
 
-    # --- PASSO 5: GERAÇÃO DA ROTA FINAL (CAMINHO EULERIANO) ---
+    # GERAÇÃO DA ROTA FINAL (CAMINHO EULERIANO)
     print("\n--- Iniciando Passo 5: Geração da Rota Final ---")
     G_euleriano = nx.MultiDiGraph()
     for (u, v), num_travessias in solucao_x.items():
@@ -153,7 +153,7 @@ if status == "Optimal":
     if nx.has_eulerian_path(G_euleriano, source=no_inicio):
         rota_em_arestas = list(nx.eulerian_path(G_euleriano, source=no_inicio))
         
-        # --- PASSO 6: IMPRESSÃO DO ROTEIRO DE RUAS ---
+        # IMPRESSÃO DO ROTEIRO DE RUAS
         print("\n\n>>> ROTEIRO DA ROTA OTIMIZADA (LISTA DE RUAS) <<<\n")
         
         nome_rua_anterior = None
@@ -175,7 +175,7 @@ if status == "Optimal":
         destino_final = nomes_cruzamentos.get(rota_em_arestas[-1][1])
         print(f"A rota tem {len(rota_em_arestas)} passos e termina em: '{destino_final}'.")
 
-        # --- PASSO 7: GERAÇÃO DO MAPA INTERATIVO DOS CRUZAMENTOS ---
+        # GERAÇÃO DO MAPA INTERATIVO DOS CRUZAMENTOS
         print("\n\n--- Iniciando Passo 7: Geração do Mapa Interativo de Referência ---")
         nodes_gdf = ox.graph_to_gdfs(G_raw, nodes=True, edges=False)
         nodes_gdf['nome_descritivo'] = nodes_gdf.index.map(nomes_cruzamentos)
