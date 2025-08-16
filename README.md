@@ -36,17 +36,7 @@ Siga os passos abaixo para configurar e executar o otimizador.
 
 ### 4.2. Instalação das Dependências
 
-1.  Crie um arquivo chamado `requirements.txt` na pasta do seu projeto com o seguinte conteúdo:
-    ```txt
-    osmnx
-    networkx
-    pulp
-    geopandas
-    shapely
-    collections-extended
-    ```
-
-2.  Abra um terminal na pasta do projeto e execute o comando abaixo para instalar todas as bibliotecas necessárias:
+1.  Abra um terminal na pasta do projeto e execute o comando abaixo para instalar todas as bibliotecas necessárias:
     ```bash
     pip install -r requirements.txt
     ```
@@ -55,7 +45,7 @@ Siga os passos abaixo para configurar e executar o otimizador.
 
 Antes de rodar o otimizador, você precisa ajustar alguns parâmetros no arquivo `resolveRota.py`:
 
-1.  **`polygon_coords`**: Se desejar mudar a área do condomínio, você pode gerar uma nova lista de coordenadas no site [geojson.io](http://geojson.io/). Desenhe um polígono ao redor da área desejada e copie as coordenadas.
+1.  **`polygon_coords`**: Se desejar mudar a área do condomínio, você pode gerar uma nova lista de coordenadas no site [geojson.io](http://geojson.io/). Desenhe um polígono ao redor da área desejada e copie as coordenadas no arquivo dados_poligono.txt.
 
 2.  **`no_inicio` e `no_fim`**: Estes são os IDs dos cruzamentos de partida e chegada. Se você mudar o polígono ou quiser usar outros pontos, precisará descobrir os novos IDs. Para isso, você pode usar o mapa interativo gerado pelo próprio script. Na primeira execução, o script usará os valores padrão e gerará o `mapa_referencia_cruzamentos.html`. Abra este arquivo, encontre os pontos desejados, anote os IDs (que aparecem ao passar o mouse) e atualize as variáveis no código.
 

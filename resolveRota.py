@@ -2,36 +2,38 @@ import osmnx as ox
 import networkx as nx
 import pulp
 import geopandas as gpd
+import json
 from shapely.geometry import Polygon
-from collections import Counter
 
 # CRIAÇÃO E LIMPEZA DO GRAFO
-print("--- Iniciando Passo 1: Criação e Limpeza do Grafo ---")
 
-polygon_coords = [
-    [-43.38908900529259, -21.757677789091943], [-43.38856156095832, -21.758591325934844],
-    [-43.388233690156085, -21.760113874420398], [-43.3882907111651, -21.76176880010881],
-    [-43.38803411662403, -21.763383989181023], [-43.38733560926278, -21.76529041846655],
-    [-43.386779654423975, -21.765793499747815], [-43.38518306616942, -21.765714065978543],
-    [-43.384213709014915, -21.764125381356422], [-43.38435626153736, -21.763357510818295],
-    [-43.38449881406041, -21.76249696136712], [-43.38465562183512, -21.76166288543648],
-    [-43.38525434243067, -21.75876344092022], [-43.385396894953715, -21.757518912525086],
-    [-43.385667744746456, -21.7570555215366], [-43.38670837816278, -21.756751006643853],
-    [-43.38908900529259, -21.757677789091943]
-]
+try:
+    with open("dados_poligono.txt", "r") as f:
+        polygon_coords = json.load(f)
+    print("Dados do polígono lidos do arquivo com sucesso.")
+except FileNotFoundError:
+    print("ERRO: Arquivo 'dados_poligono.txt' não encontrado.")
+    exit()
+
 polygon_geom = Polygon(polygon_coords)
 
 if not polygon_geom.is_valid:
-    print("ERRO: O polígono é inválido."); exit()
+    print("ERRO: O polígono é inválido.")
+    exit()
 
-print("Polígono criado com sucesso e é válido! 👍")
+print("Polígono criado com sucesso e é válido!")
 G_raw = ox.graph_from_polygon(polygon_geom, network_type="all")
-print(f"Grafo original gerado com {G_raw.number_of_nodes()} nós e {G_raw.number_of_edges()} arestas.")
+print(
+    f"Grafo original gerado com {G_raw.number_of_nodes()} nós e {G_raw.number_of_edges()} arestas."
+)
 
 G_solver = G_raw.copy()
-self_loops = list(nx.selfloop_edges(G_solver)); G_solver.remove_edges_from(self_loops)
+self_loops = list(nx.selfloop_edges(G_solver))
+G_solver.remove_edges_from(self_loops)
 G_solver = nx.Graph(G_solver)
-print(f"Grafo simplificado para o solver com {G_solver.number_of_nodes()} nós e {len(G_solver.edges())} ruas.")
+print(
+    f"Grafo simplificado para o solver com {G_solver.number_of_nodes()} nós e {len(G_solver.edges())} ruas."
+)
 print("-" * 30)
 
 # DEFINIÇÃO DOS NÓS DE INÍCIO E FIM
@@ -41,12 +43,11 @@ print(f"Nó de início definido: {no_inicio}")
 print(f"Nó de fim definido: {no_fim}")
 
 # GERAR NOMES DESCRITIVOS PARA OS CRUZAMENTOS
-print("\n--- Iniciando Passo 2.5: Gerando nomes para os cruzamentos ---")
 nomes_cruzamentos = {}
 for node in G_raw.nodes():
     ruas_conectadas = set()
     for u, v, data in G_raw.edges(node, data=True):
-        nome_rua_valor = data.get('name', None)
+        nome_rua_valor = data.get("name", None)
         if nome_rua_valor:
             if isinstance(nome_rua_valor, list):
                 nome_final = nome_rua_valor[0]
@@ -59,28 +60,38 @@ for node in G_raw.nodes():
     elif len(ruas_conectadas) == 1:
         nomes_cruzamentos[node] = f"Final da {ruas_conectadas[0]}"
     elif len(ruas_conectadas) == 2:
-        nomes_cruzamentos[node] = f"Esquina da {ruas_conectadas[0]} com {ruas_conectadas[1]}"
+        nomes_cruzamentos[node] = (
+            f"Esquina da {ruas_conectadas[0]} com {ruas_conectadas[1]}"
+        )
     else:
-        nomes_cruzamentos[node] = f"Cruzamento da {', '.join(ruas_conectadas[:-1])} e {ruas_conectadas[-1]}"
+        nomes_cruzamentos[node] = (
+            f"Cruzamento da {', '.join(ruas_conectadas[:-1])} e {ruas_conectadas[-1]}"
+        )
 print("Nomes descritivos para os cruzamentos foram gerados.")
 print("-" * 30)
 
 # DEFINIÇÃO DOS PARÂMETROS DO MODELO
-print("\n--- Iniciando Passo 3: Definição dos Parâmetros ---")
-C_LITRO = 5.80; KM_LITRO = 5.0; C_KM = C_LITRO / KM_LITRO
-V = list(G_solver.nodes()); E = list(G_solver.edges()); A = []
+C_LITRO = 5.80
+KM_LITRO = 5.0
+C_KM = C_LITRO / KM_LITRO
+V = list(G_solver.nodes())
+E = list(G_solver.edges())
+A = []
 costs = {}
 for i, j in E:
     edge_data = G_raw.get_edge_data(i, j)
-    if edge_data is None: edge_data = G_raw.get_edge_data(j, i)
-    dist_m = edge_data[0]['length']
-    dist_km = dist_m / 1000.0; cost = C_KM * dist_km
-    A.extend([(i, j), (j, i)]); costs[(i, j)] = cost; costs[(j, i)] = cost
+    if edge_data is None:
+        edge_data = G_raw.get_edge_data(j, i)
+    dist_m = edge_data[0]["length"]
+    dist_km = dist_m / 1000.0
+    cost = C_KM * dist_km
+    A.extend([(i, j), (j, i)])
+    costs[(i, j)] = cost
+    costs[(j, i)] = cost
 print(f"Parâmetros definidos. Custo por km: R${C_KM:.2f}")
 print("-" * 30)
 
 # MODELAGEM E RESOLUÇÃO COM PULP
-print("\n--- Iniciando Passo 4: Otimização com PuLP ---")
 model = pulp.LpProblem("Otimizacao_Rota_Coleta", pulp.LpMinimize)
 
 # Definição das Variáveis de Decisão (x_ij)
@@ -109,13 +120,13 @@ for k in V:
     fluxo_entrada = pulp.lpSum([x[i, k] for i, j in A if j == k])
     # Soma dos arcos que saem do nó k
     fluxo_saida = pulp.lpSum([x[k, j] for i, j in A if i == k])
-    
+
     # Sub-restrição 2.1: Nó de Início
     # O fluxo de saída deve ser 1 unidade maior que o de entrada.
     # Equação LaTeX: Soma(x_sj) - Soma(x_is) = 1
     if k == no_inicio:
         model += fluxo_saida - fluxo_entrada == 1, f"Fluxo_Inicio_{k}"
-    
+
     # Sub-restrição 2.2: Nó de Fim
     # O fluxo de entrada deve ser 1 unidade maior que o de saída.
     # Equação LaTeX: Soma(x_it) - Soma(x_tj) = 1
@@ -129,7 +140,7 @@ for k in V:
         model += fluxo_entrada - fluxo_saida == 0, f"Fluxo_Intermediario_{k}"
 
 print("Modelo montado. Iniciando o solver...")
-model.solve()
+model.solve(pulp.GLPK_CMD(msg=True))
 status = pulp.LpStatus[model.status]
 print(f"Status da Solução: {status}")
 
@@ -142,58 +153,105 @@ if status == "Optimal":
 
     solucao_x = {}
     for i, j in A:
-        if x[i, j].varValue > 0: solucao_x[(i, j)] = int(x[i, j].varValue)
+        if x[i, j].varValue > 0:
+            solucao_x[(i, j)] = int(x[i, j].varValue)
 
     # GERAÇÃO DA ROTA FINAL (CAMINHO EULERIANO)
-    print("\n--- Iniciando Passo 5: Geração da Rota Final ---")
     G_euleriano = nx.MultiDiGraph()
     for (u, v), num_travessias in solucao_x.items():
-        for _ in range(num_travessias): G_euleriano.add_edge(u, v)
-    
+        for _ in range(num_travessias):
+            G_euleriano.add_edge(u, v)
+
     if nx.has_eulerian_path(G_euleriano, source=no_inicio):
         rota_em_arestas = list(nx.eulerian_path(G_euleriano, source=no_inicio))
-        
+
         # IMPRESSÃO DO ROTEIRO DE RUAS
         print("\n\n>>> ROTEIRO DA ROTA OTIMIZADA (LISTA DE RUAS) <<<\n")
-        
+        roteiro_final = []
         nome_rua_anterior = None
         for i, (u, v) in enumerate(rota_em_arestas):
             edge_data = G_raw.get_edge_data(u, v)
-            if edge_data is None: edge_data = G_raw.get_edge_data(v, u)
-            nome_rua_valor = edge_data[0].get('name', 'Rua sem nome')
-            if isinstance(nome_rua_valor, list): nome_rua_atual = nome_rua_valor[0]
-            else: nome_rua_atual = nome_rua_valor
-            nome_cruzamento_destino = nomes_cruzamentos.get(v, f"Ponto {v}")
-            if nome_rua_atual == nome_rua_anterior: acao = "Continue pela"
+            if edge_data is None:
+                edge_data = G_raw.get_edge_data(v, u)
+            nome_rua_valor = edge_data[0].get("name", "Rua sem nome")
+            if isinstance(nome_rua_valor, list):
+                nome_rua_atual = nome_rua_valor[0]
             else:
-                if i == 0: acao = f"Comece em '{nomes_cruzamentos.get(u)}' e siga pela"
-                else: acao = "Vire na"
-            print(f"Passo {i+1}: {acao} **{nome_rua_atual}** (em direção a: **{nome_cruzamento_destino}**)")
+                nome_rua_atual = nome_rua_valor
+            nome_cruzamento_destino = nomes_cruzamentos.get(v, f"Ponto {v}")
+            if nome_rua_atual == nome_rua_anterior:
+                acao = "Continue pela"
+            else:
+                if i == 0:
+                    acao = f"Comece em '{nomes_cruzamentos.get(u)}' e siga pela"
+                else:
+                    acao = "Vire na"
+            roteiro_final.append(
+                f"Passo {i+1}: {acao} **{nome_rua_atual}** (em direção a: **{nome_cruzamento_destino}**)"
+            )
             nome_rua_anterior = nome_rua_atual
-            
-        print(f"\n--- FIM DA ROTA ---")
+
+        roteiro_final.append(f"\n--- FIM DA ROTA ---")
         destino_final = nomes_cruzamentos.get(rota_em_arestas[-1][1])
-        print(f"A rota tem {len(rota_em_arestas)} passos e termina em: '{destino_final}'.")
+        roteiro_final.append(
+            f"A rota tem {len(rota_em_arestas)} passos e termina em: '{destino_final}'."
+        )
+
+        try:
+            with open("roteiro_final.txt", "w", encoding="utf-8") as f:
+                f.write("--- ROTEIRO DA ROTA OTIMIZADA ---\n")
+                f.write(f"Custo Total: R$ {custo_minimo:.2f}\n")
+                f.write(f"Distância Total: {distancia_total_km:.2f} km\n\n")
+                for linha in roteiro_final:
+                    f.write(linha + "\n")
+            print("Roteiro final exportado com sucesso para 'roteiro_final.txt'")
+        except Exception as e:
+            print(f"Erro ao salvar o roteiro: {e}")
 
         # GERAÇÃO DO MAPA INTERATIVO DOS CRUZAMENTOS
-        print("\n\n--- Iniciando Passo 7: Geração do Mapa Interativo de Referência ---")
         nodes_gdf = ox.graph_to_gdfs(G_raw, nodes=True, edges=False)
-        nodes_gdf['nome_descritivo'] = nodes_gdf.index.map(nomes_cruzamentos)
+        nodes_gdf["nome_descritivo"] = nodes_gdf.index.map(nomes_cruzamentos)
         mapa_dos_pontos = nodes_gdf.explore(
-            tooltip='nome_descritivo', tiles="cartodbdarkmatter",
-            marker_kwds={'radius': 5, 'color': 'cyan', 'fill': True, 'fill_opacity': 0.8},
-            style_kwds={'stroke': False}
+            tooltip="nome_descritivo",
+            tiles="cartodbdarkmatter",
+            marker_kwds={
+                "radius": 5,
+                "color": "cyan",
+                "fill": True,
+                "fill_opacity": 0.8,
+            },
+            style_kwds={"stroke": False},
         )
-        start_gdf = gpd.GeoDataFrame({'label': ['INÍCIO']}, geometry=[nodes_gdf.loc[no_inicio].geometry], crs=nodes_gdf.crs)
-        end_gdf = gpd.GeoDataFrame({'label': ['FIM']}, geometry=[nodes_gdf.loc[no_fim].geometry], crs=nodes_gdf.crs)
-        start_gdf.explore(m=mapa_dos_pontos, marker_kwds={'icon': 'play', 'marker_color': 'green'}, tooltip='label')
-        end_gdf.explore(m=mapa_dos_pontos, marker_kwds={'icon': 'stop', 'marker_color': 'red'}, tooltip='label')
-        map_filename = 'mapa_referencia_cruzamentos.html'
+        start_gdf = gpd.GeoDataFrame(
+            {"label": ["INÍCIO"]},
+            geometry=[nodes_gdf.loc[no_inicio].geometry],
+            crs=nodes_gdf.crs,
+        )
+        end_gdf = gpd.GeoDataFrame(
+            {"label": ["FIM"]},
+            geometry=[nodes_gdf.loc[no_fim].geometry],
+            crs=nodes_gdf.crs,
+        )
+        start_gdf.explore(
+            m=mapa_dos_pontos,
+            marker_kwds={"icon": "play", "marker_color": "green"},
+            tooltip="label",
+        )
+        end_gdf.explore(
+            m=mapa_dos_pontos,
+            marker_kwds={"icon": "stop", "marker_color": "red"},
+            tooltip="label",
+        )
+        map_filename = "mapa_referencia_cruzamentos.html"
         mapa_dos_pontos.save(map_filename)
         print(f"\nMAPA DE REFERÊNCIA GERADO: '{map_filename}'")
-        print("Abra este arquivo no seu navegador para ver todos os pontos e seus nomes.")
+        print(
+            "Abra este arquivo no seu navegador para ver todos os pontos e seus nomes."
+        )
 
     else:
-        print("\nERRO: Não foi possível gerar um caminho Euleriano a partir da solução.")
+        print(
+            "\nERRO: Não foi possível gerar um caminho Euleriano a partir da solução."
+        )
 else:
     print("\nNão foi possível encontrar uma solução ótima.")
