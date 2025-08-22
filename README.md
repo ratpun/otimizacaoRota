@@ -43,9 +43,62 @@ Recomenda-se a seguinte estrutura de arquivos:
 ### 5.1. Instalação das Dependências
 
 Com o arquivo `requirements.txt` na pasta do projeto, abra um terminal e instale as bibliotecas necessárias:
+
 ```bash
 pip install -r requirements.txt
 ```
+### 5.1.2 Configuração do GLPK no Windows
+
+Para que o script Python (através da biblioteca PuLP) consiga encontrar e executar o solver GLPK, é necessário que o sistema operacional saiba onde o programa glpsol.exe está localizado. O método padrão para isso é adicionar a pasta do GLPK à variável de ambiente Path do Windows.
+
+Siga os passos abaixo:
+
+Passo 1: Localize a Pasta do GLPK
+Primeiramente, certifique-se de que você já baixou e extraiu o GLPK para uma pasta permanente em seu computador. A localização recomendada é um caminho simples, por exemplo:
+
+```bash
+C:\glpk\glpk-5.0\
+```
+Dentro desta pasta, você encontrará o executável do solver na subpasta correspondente à arquitetura do seu sistema (geralmente w64 para sistemas de 64-bit). O caminho completo que usaremos será, portanto:
+
+```bash
+C:\glpk\glpk-5.0\w64
+```
+Passo 2: Abra as Configurações de Variáveis de Ambiente
+Pressione a tecla Windows e pesquise por Editar as variáveis de ambiente do sistema.
+
+Clique na opção correspondente que aparecer no menu Iniciar.
+
+Passo 3: Edite a Variável Path
+Na janela de "Propriedades do Sistema" que se abrir, clique no botão Variáveis de Ambiente....
+
+Na seção superior, chamada "Variáveis de usuário", encontre e selecione a variável Path na lista.
+
+Clique no botão Editar....
+
+Passo 4: Adicione o Novo Caminho
+Na janela "Editar a variável de ambiente", clique no botão Novo.
+
+Um novo campo de texto aparecerá no final da lista. Cole o caminho completo para a pasta do GLPK que você copiou no Passo 1.
+
+Exemplo: C:\glpk\glpk-5.0\w64
+
+Clique em OK em todas as janelas abertas (OK > OK > OK) para salvar e aplicar as alterações.
+
+Passo 5: Verifique a Instalação
+Importante: Feche e reabra completamente qualquer terminal ou editor de código (como o VS Code) que estiver aberto para que a mudança tenha efeito.
+
+Abra um novo terminal (Prompt de Comando ou PowerShell).
+
+Digite o comando a seguir e pressione Enter:
+
+```bash
+glpsol --version
+```
+
+Se a configuração foi bem-sucedida, o terminal exibirá a versão do GLPK instalada. Se aparecer um erro de "comando não encontrado", revise os passos anteriores, principalmente o caminho que você colou.
+
+Após seguir estes passos, seu script Python conseguirá chamar o GLPK sem problemas.
 
 ### 5.2. Configuração
 Ajuste os valores no config.json:
